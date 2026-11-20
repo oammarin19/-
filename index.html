@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Calendar</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#f5f6fa;color:#222}
+.app{max-width:520px;margin:auto;min-height:100vh;background:white}
+header{padding:18px 18px 10px;display:flex;justify-content:space-between;align-items:center}
+h1{font-size:23px;margin:0}.nav{display:flex;gap:8px}.nav button,.add{border:0;border-radius:12px;padding:10px 13px;background:#eee;font-size:18px}
+.month{text-align:center;font-weight:700;font-size:18px;padding:8px}
+.week,.grid{display:grid;grid-template-columns:repeat(7,1fr);padding:0 10px}.week div{text-align:center;color:#888;font-size:12px;padding:8px 0}
+.day{min-height:62px;border:1px solid #eee;margin:2px;border-radius:10px;padding:6px;font-size:13px;position:relative;cursor:pointer}
+.day.muted{color:#bbb}.day.today{outline:2px solid #222}.day.selected{background:#f0f0f0}.dot{width:7px;height:7px;border-radius:50%;background:#222;position:absolute;bottom:7px;left:50%;transform:translateX(-50%)}
+section{padding:14px 18px}.selected-title{font-weight:700;font-size:17px}.event{padding:12px;margin-top:8px;border-radius:12px;background:#f5f5f5}
+.event b{display:block}.empty{color:#888;margin-top:8px}.fab{position:fixed;right:22px;bottom:22px;border:0;border-radius:50%;width:58px;height:58px;background:#222;color:#fff;font-size:28px;box-shadow:0 5px 20px #aaa}
+dialog{border:0;border-radius:18px;width:min(92%,420px);padding:0;box-shadow:0 10px 40px #999}
+form{padding:20px}label{display:block;margin-top:12px;font-size:13px;color:#666}input,textarea{width:100%;padding:11px;border:1px solid #ddd;border-radius:10px;font:inherit}textarea{min-height:90px;resize:vertical}.actions{display:flex;gap:8px;margin-top:18px}.actions button{flex:1;padding:12px;border:0;border-radius:10px}.save{background:#222;color:#fff}
+</style>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#222"><link rel="apple-touch-icon" href="icon.svg"></head>
+<body>
+<div class="app">
+<header><h1>Oammarin Klinprathum</h1><div class="nav"><button id="prev">‹</button><button id="next">›</button></div></header>
+<div class="month" id="month"></div>
+<div class="week"><div>อา</div><div>จ</div><div>อ</div><div>พ</div><div>พฤ</div><div>ศ</div><div>ส</div></div>
+<div class="grid" id="grid"></div>
+<section><div class="selected-title" id="selectedTitle"></div><div id="events"></div></section>
+<button class="fab" id="add">+</button>
+</div>
+<dialog id="dlg">
+<form method="dialog" id="form">
+<h2 style="margin:0">เพิ่มบันทึก</h2>
+<label>วันที่</label><input id="date" type="date" required>
+<label>เวลาเริ่ม</label><input id="startTime" type="time">
+<label>เวลาออก</label><input id="endTime" type="time">
+<label>ประเภท</label>
+<select id="category" style="width:100%;padding:11px;border:1px solid #ddd;border-radius:10px;font:inherit">
+<option value="OT">OT 🔵</option>
+<option value="Standby">สแตนบาย 🟡</option>
+<option value="Other">อื่น ๆ</option>
+</select>
+<label>จำนวนชั่วโมง</label>
+<input id="hours" type="number" min="0" step="0.5" placeholder="เช่น 2.5">
+<label>หัวข้อ</label><input id="title" placeholder="เช่น ไปทำงาน / นัดหมาย">
+<label>รายละเอียด / โน้ต</label><textarea id="note" placeholder="เขียนรายละเอียดไว้ตรงนี้..."></textarea>
+<div class="actions"><button value="cancel">ยกเลิก</button><button class="save" id="save" value="default">บันทึก</button></div>
+</form></dialog>
+<script>
+const KEY='my_calendar_events_v1';
+let events=JSON.parse(localStorage.getItem(KEY)||'[]');
+// ลบข้อมูลของวันที่ 19 พฤศจิกายน 2026 ตามคำขอ
+events=events.filter(e=>e.date!=='2026-11-19');
+localStorage.setItem(KEY,JSON.stringify(events));
+let view=new Date(), selected=new Date();
+const $=id=>document.getElementById(id);
+function pad(n){return String(n).padStart(2,'0')}
+function key(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function thaiMonth(d){return d.toLocaleDateString('th-TH',{month:'long',year:'numeric'})}
+function render(){
+ $('month').textContent=thaiMonth(view);
+ const first=new Date(view.getFullYear(),view.getMonth(),1), start=new Date(first); start.setDate(1-first.getDay());
+ const g=$('grid');g.innerHTML='';
+ for(let i=0;i<42;i++){let d=new Date(start);d.setDate(start.getDate()+i);let k=key(d), div=document.createElement('div');
+ div.className='day'+(d.getMonth()!=view.getMonth()?' muted':'')+(k===key(new Date())?' today':'')+(k===key(selected)?' selected':'');
+ div.textContent=d.getDate();
+const dayEvents=events.filter(e=>e.date===k);
+if(dayEvents.length){let dot=document.createElement('span');dot.className='dot';
+dot.style.background=dayEvents.some(e=>e.category==='OT')?'#2196f3':dayEvents.some(e=>e.category==='Standby')?'#f5c400':'#222';
+div.appendChild(dot)}
+ div.onclick=()=>{selected=d;render()};g.appendChild(div)}
+ $('selectedTitle').textContent='วันที่ '+selected.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+ const es=events.filter(e=>e.date===key(selected)).sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+ const dayOT=es.filter(e=>e.category==='OT').reduce((a,e)=>a+(Number(e.hours)||0),0);
+ const daySB=es.filter(e=>e.category==='Standby').length*180;
+ const monthKey=view.getFullYear()+'-'+pad(view.getMonth()+1);
+ const monthOT=events.filter(e=>e.date.startsWith(monthKey)&&e.category==='OT').reduce((a,e)=>a+(Number(e.hours)||0),0);
+ const monthSB=events.filter(e=>e.date.startsWith(monthKey)&&e.category==='Standby').length*180;
+ $('events').innerHTML=`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0">
+ <div style="background:#e8f3ff;padding:12px;border-radius:12px"><b>🔵 OT วันนี้</b><br><strong>${dayOT} ชม.</strong></div>
+ <div style="background:#fff7cf;padding:12px;border-radius:12px"><b>🟡 สแตนบายวันนี้</b><br><strong>${daySB} บาท</strong></div>
+ </div>
+ <div style="background:#f5f5f5;padding:12px;border-radius:12px;margin-bottom:10px"><b>สรุปเดือนนี้</b><br>🔵 OT รวม <strong>${monthOT} ชม.</strong> · 🟡 สแตนบายรวม <strong>${monthSB} บาท</strong></div>`+
+ (es.length?es.map(e=>`<div class="event"><b>${e.category==='OT'?'🔵 OT':e.category==='Standby'?'🟡 สแตนบาย':'⚪ อื่น ๆ'} · ${e.startTime&&e.endTime?e.startTime+' - '+e.endTime:(e.time||'ไม่ระบุเวลา')} · ${e.category==='Standby'?'180 บาท':(e.hours||0)+' ชม.'} · ${escapeHtml(e.title||'ไม่มีหัวข้อ')}</b><div>${escapeHtml(e.note||'')}</div></div>`).join(''):'<div class="empty">ยังไม่มีบันทึกสำหรับวันนี้</div>');
+}
+function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+$('prev').onclick=()=>{view.setMonth(view.getMonth()-1);render()}
+$('next').onclick=()=>{view.setMonth(view.getMonth()+1);render()}
+$('add').onclick=()=>{$('date').value=key(selected);$('startTime').value='';$('endTime').value='';$('hours').value='';$('title').value='';$('note').value='';$('dlg').showModal()}
+$('save').onclick=e=>{
+ e.preventDefault();
+ if(!$('date').value)return;
+ let start=$('startTime').value,end=$('endTime').value;
+let hrs=parseFloat($('hours').value)||0;
+if(start&&end){
+  let [sh,sm]=start.split(':').map(Number),[eh,em]=end.split(':').map(Number);
+  let mins=(eh*60+em)-(sh*60+sm);
+  if(mins<0) mins+=24*60;
+  hrs=mins/60;
+}
+events.push({date:$('date').value,startTime:start,endTime:end,time:start,category:$('category').value,hours:hrs,title:$('title').value,note:$('note').value});
+ localStorage.setItem(KEY,JSON.stringify(events)); selected=new Date($('date').value+'T00:00:00'); view=new Date(selected); $('dlg').close();render()
+}
+render();
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{});}</script></body>
+</html>
