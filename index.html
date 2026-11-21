@@ -49,9 +49,7 @@ form{padding:20px}label{display:block;margin-top:12px;font-size:13px;color:#666}
 <script>
 const KEY='my_calendar_events_v1';
 let events=JSON.parse(localStorage.getItem(KEY)||'[]');
-// ลบข้อมูลของวันที่ 19 พฤศจิกายน 2026 ตามคำขอ
-events=events.filter(e=>e.date!=='2026-11-19');
-localStorage.setItem(KEY,JSON.stringify(events));
+// เก็บข้อมูลเดิมทั้งหมดไว้ ไม่ลบหมายเหตุหรือบันทึกของวันใด ๆ
 let view=new Date(), selected=new Date();
 const $=id=>document.getElementById(id);
 function pad(n){return String(n).padStart(2,'0')}
@@ -98,7 +96,18 @@ if(start&&end){
   if(mins<0) mins+=24*60;
   hrs=mins/60;
 }
-events.push({date:$('date').value,startTime:start,endTime:end,time:start,category:$('category').value,hours:hrs,title:$('title').value,note:$('note').value});
+const newEvent={
+  id:Date.now().toString(36)+'-'+Math.random().toString(36).slice(2),
+  date:$('date').value,
+  startTime:start,
+  endTime:end,
+  time:start,
+  category:$('category').value,
+  hours:hrs,
+  title:$('title').value,
+  note:$('note').value
+};
+events.push(newEvent);
  localStorage.setItem(KEY,JSON.stringify(events)); selected=new Date($('date').value+'T00:00:00'); view=new Date(selected); $('dlg').close();render()
 }
 render();
